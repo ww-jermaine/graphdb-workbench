@@ -5,7 +5,7 @@ import 'angular/import/app';
 import 'angular/security/app';
 import 'angular/sparql/app';
 import 'angular/graphexplore/app';
-import 'angular/namespaces/app';
+// import 'angular/namespaces/app';
 import 'angular/explore/app';
 import 'angular/stats/app';
 import 'angular/resources/app';
@@ -29,7 +29,7 @@ const modules = [
     'graphdb.framework.explore',
     'graphdb.framework.sparql',
     'graphdb.framework.graphexplore',
-    'graphdb.framework.namespaces',
+    // 'graphdb.framework.namespaces',
     'graphdb.framework.stats',
     'graphdb.framework.jmx.resources',
     'graphdb.framework.jmx.queries',
@@ -56,10 +56,20 @@ const moduleDefinition = function (productInfo) {
                 .setStorageType('localStorage')
                 .setNotify(true, true);
 
-            $routeProvider.when('/', {
-                templateUrl: 'pages/home.html',
-                controller: 'homeCtrl'
-            }).otherwise({
+            let routes = PluginRegistry.get('route');
+            console.log('ROUTES: ', routes);
+
+            routes.forEach(function(route) {
+                console.log('route: ', route);
+                $routeProvider.when(route.url || '/', {
+                    controller: route.controller,
+                    templateUrl: route.templateUrl,
+                    title: route.title,
+                    helpInfo: route.helpInfo
+                });
+            });
+
+            $routeProvider.otherwise({
                 templateUrl: 'pages/not_found.html'
             });
 
@@ -73,6 +83,16 @@ const moduleDefinition = function (productInfo) {
             // at the time of module creation so we pass it to $menuItemsProvider. The info can be used
             // to construct version/edition-specific links.
             $menuItemsProvider.setProductInfo(productInfo);
+
+            let mainMenu = PluginRegistry.get('main.menu');
+            console.log('MENU: ', mainMenu);
+            mainMenu.forEach(function(menu) {
+               console.log('\tmenu: ', menu);
+               menu.items.forEach(function(item) {
+                   console.log('\titem: ', item);
+                   $menuItemsProvider.addItem(item);
+               });
+            });
         }]);
 
     workbench.constant('isEnterprise', productInfo.productType === 'enterprise');
