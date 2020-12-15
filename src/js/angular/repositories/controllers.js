@@ -36,7 +36,8 @@ angular.module('graphdb.framework.repositories.controllers', modules)
     .controller('AddRepositoryCtrl', AddRepositoryCtrl)
     .controller('EditRepositoryCtrl', EditRepositoryCtrl)
     .controller('EditRepositoryFileCtrl', EditRepositoryFileCtrl)
-    .controller('UploadRepositoryConfigCtrl', UploadRepositoryConfigCtrl);
+    .controller('UploadRepositoryConfigCtrl', UploadRepositoryConfigCtrl)
+    .controller('OntopPropertiesFileCtrl', OntopPropertiesFileCtrl);
 
 const editFile = function(file, $modal, $scope, RepositoriesRestService, toastr) {
 
@@ -61,6 +62,55 @@ const editFile = function(file, $modal, $scope, RepositoriesRestService, toastr)
             })
         });
     }
+
+const showPropertiesFileModal = function (file, $modal, $scope, RepositoriesRestService, toastr) {
+    let fileDest = $scope.repositoryInfo.params[file].value
+    const modalInstance = $modal.open({
+        templateUrl: 'js/angular/templates/modal/ontop-properties.html',
+        controller: 'OntopPropertiesFileCtrl',
+        resolve: {
+            data: function () {
+                return {
+                    title: (fileDest ? 'Edit' : 'Create') + ' Ontop Repository properties file',
+                    okButtonText: (fileDest ? 'Edit' : 'Save'),
+                    fileName: fileDest
+                };
+            }
+        }
+    });
+
+    modalInstance.result.then(function (jdbc) {
+        $scope.uploadFileLoader = true;
+        // send data to backend
+        if (fileDest) {
+            RepositoriesRestService.updatePropertiesFile(fileDest, jdbc)
+                .success(function (data) {
+                    $scope.ontopRepoFileNames[file] = getFileName(data.fileLocation);
+                    $scope.repositoryInfo.params[file].value = data.fileLocation;
+                    $scope.uploadFileLoader = false;
+                }).error(function (data) {
+                const msg = getError(data);
+                toastr.error(msg, 'Error');
+                $scope.uploadFileLoader = false;
+            });
+        } else {
+            RepositoriesRestService.createPropertiesFile($scope.repositoryInfo.id, jdbc)
+                .success(function (data) {
+                    $scope.ontopRepoFileNames[file] = getFileName(data.fileLocation);
+                    $scope.repositoryInfo.params[file].value = data.fileLocation;
+                    $scope.uploadFileLoader = false;
+                }).error(function (data) {
+                const msg = getError(data);
+                toastr.error(msg, 'Error');
+                $scope.uploadFileLoader = false;
+            });
+        }
+    });
+}
+
+const ontopFileCreated = function (file, $scope) {
+    return $scope.repositoryInfo.params[file] && $scope.repositoryInfo.params[file].value;
+}
 
 const uploadRepoFile = function (files, param, Upload, $scope) {
     if (files && files.length) {
@@ -609,6 +659,14 @@ function AddRepositoryCtrl($scope, toastr, $repositories, $location, Upload, isE
         editFile(file, $modal, $scope, RepositoriesRestService, toastr);
     };
 
+    $scope.showPropertiesFileModal = function(file) {
+        showPropertiesFileModal(file, $modal, $scope, RepositoriesRestService, toastr);
+    };
+
+    $scope.ontopFileCreated = function (file) {
+        return ontopFileCreated(file, $scope);
+    }
+
     //TODO - check if repositoryID exist
 
 }
@@ -792,4 +850,111 @@ function EditRepositoryCtrl($scope, $routeParams, toastr, $repositories, $locati
         });
     }
 
+    $scope.showPropertiesFileModal = function(file) {
+        showPropertiesFileModal(file, $modal, $scope, RepositoriesRestService, toastr);
+    };
+
+    $scope.ontopFileCreated = function (file) {
+        return ontopFileCreated(file, $scope);
+    }
+}
+
+OntopPropertiesFileCtrl.$inject = ['$scope', '$modalInstance', 'RepositoriesRestService', 'data', 'toastr'];
+
+function OntopPropertiesFileCtrl($scope, $modalInstance, RepositoriesRestService, data, toastr) {
+    $scope.supportedRDBMS = [{
+            rdbmsName: "MySQL",
+            jdbc: {
+                url: "jdbc:mysql://(host=host_or_ip):(port=port),key1=value1)/db",
+                driver: "com.mysql.cj.jdbc.Driver",
+                user: "",
+                password: ""
+            },
+            downloadDriverUrl: "https://dev.mysql.com/downloads/connector/j/"
+        },
+        {
+            rdbmsName: "PostgreSQL",
+            jdbc: {
+                url: "jdbc:postgresql://host_or_ip:port/db",
+                driver: "org.postgresql.Driver",
+                user: "",
+                password: ""
+            },
+            downloadDriverUrl: "https://jdbc.postgresql.org/download.html"
+        },
+        {
+            rdbmsName: "Oracle",
+            jdbc: {
+                url: "jdbc:oracle:thin:@host_or_ip:port:db",
+                driver: "oracle.jdbc.driver.OracleDriver",
+                user: "",
+                password: ""
+            },
+            downloadDriverUrl: "https://www.cdata.com/drivers/oracledb/jdbc/"
+        },
+        {
+            rdbmsName: "MS SQL Server",
+            jdbc: {
+                url: "jdbc:sqlserver://[serverName[\\instanceName][:portNumber]][;property=value[;property=value]]",
+                driver: "com.microsoft.sqlserver.jdbc.SQLServerDriver",
+                user: "",
+                password: ""
+            },
+            downloadDriverUrl: "https://docs.microsoft.com/en-us/sql/connect/jdbc/download-microsoft-jdbc-driver-for-sql-server"
+        },
+        {
+            rdbmsName: "DB2",
+            jdbc: {
+                url: "jdbc:db2://host_or_ip:port/db",
+                driver: "com.ibm.db2.jcc.DB2Driver",
+                user: "",
+                password: ""
+            },
+            downloadDriverUrl: "https://www.ibm.com/support/pages/db2-jdbc-driver-versions-and-downloads"
+        }];
+
+    $scope.selectedRDBMS = {
+        rdbmsName: "",
+        jdbc: {
+            url: "",
+            driver: "",
+            user: "",
+            password: ""
+        },
+        downloadDriverUrl: undefined
+    };
+    $scope.title = data.title;
+    $scope.okButtonText = data.okButtonText;
+    if (data.fileName) {
+        RepositoriesRestService
+            .getPropertiesFileContent(data.fileName)
+            .success(function(jdbc) {
+                let found = $scope.supportedRDBMS.find(rdbms => rdbms.jdbc.driver === jdbc.driver);
+                found.jdbc.url = jdbc.url;
+                found.jdbc.user = jdbc.user;
+                found.jdbc.password = jdbc.password;
+                $scope.selectRDBMS(found);
+            }).error(function (jdbc) {
+            const msg = getError(jdbc);
+            toastr.error(msg, 'Error');
+        })
+    }
+    $scope.ok = function () {
+        if ($scope.form.$valid) {
+            $modalInstance.close($scope.selectedRDBMS.jdbc);
+        }
+    };
+
+    $scope.cancel = function () {
+        $modalInstance.dismiss('cancel');
+    };
+
+    $scope.getSelectedRDBMSName = function () {
+        return $scope.selectedRDBMS.rdbmsName !== '' ?
+            $scope.selectedRDBMS.rdbmsName : 'Select RDBMS';
+    }
+
+    $scope.selectRDBMS = function (rdbms) {
+        $scope.selectedRDBMS = rdbms;
+    }
 }

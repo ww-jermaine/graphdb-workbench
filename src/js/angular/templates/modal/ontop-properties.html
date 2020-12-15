@@ -1,0 +1,76 @@
+<!--This dependency is needed to make invisible dropdown scrollbar-->
+<link href="css/dependencies.css?v=[AIV]{version}[/AIV]" rel="stylesheet">
+<div class="modal-header">
+    <button type="button" class="close" ng-click="cancel()"></button>
+    <h3 class="modal-title">{{title}}</h3>
+</div>
+<form novalidate ng-submit="ok()" name="form" class="save-query-form">
+    <div class="modal-body">
+        <div id="selectRDBMSDropdown" class="btn-group" role="group" style="padding-bottom: 25px">
+            <button id="RDBMSBtnGroup" type="button" class="btn btn-lg btn-secondary dropdown-toggle"
+                    data-toggle="dropdown"
+                    aria-expanded="false">
+                <a dropdown-toggle>
+                    <span tooltip-trigger="mouseenter" tooltip-placement="top" tooltip="Select RDBMS">
+                        {{getSelectedRDBMSName()}}
+                    </span>
+                </a>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-right pre-scrollable" aria-labelledby="dropdownMenuButton">
+                <li ng-repeat="currentRDBMS in supportedRDBMS" ng-if="currentRDBMS.rdbmsName !== getSelectedRDBMSName()">
+                    <a class="dropdown-item" ng-click="selectRDBMS(currentRDBMS)">
+                        <span class="multiline-text">
+						    {{currentRDBMS.rdbmsName}} <br/>
+					    </span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <input id="jdbc-url" required type="text"
+               ng-model="selectedRDBMS.jdbc.url"
+               class="form-control"
+               placeholder="JDBC Url"/>
+        </br>
+        <input id="jdbc-driver" required type="text"
+               ng-model="selectedRDBMS.jdbc.driver"
+               class="form-control"
+               ng-readonly="true"
+               placeholder="JDBC Driver"/>
+        </br>
+        <input id="jdbc-user" type="text"
+               ng-model="selectedRDBMS.jdbc.user"
+               class="form-control"
+               placeholder="JDBC User"/>
+        </br>
+        <input id="jdbc-password" type="text"
+               ng-model="selectedRDBMS.jdbc.password"
+               class="form-control"
+               placeholder="JDBC Password"/>
+        <div class="jdbc-errors">
+            <div ng-show="form.$error.required.length" >
+                <div ng-hide="selectedRDBMS.jdbc.url"
+                     class="alert alert-danger empty-jdbc-url-err"
+                     style="margin-top: 20px;">
+                    JDBC Url cannot be empty!
+                </div>
+                <div ng-hide="selectedRDBMS.jdbc.driver"
+                     class="alert alert-danger empty-jdbc-driver-err"
+                     style="margin-top: 5px;">
+                    JDBC Driver cannot be empty!
+                </div>
+            </div>
+        </div>
+        </br>
+        <a class="uri" ng-if="selectedRDBMS.downloadDriverUrl"
+           href="{{selectedRDBMS.downloadDriverUrl}}"
+           style="text-decoration: underline;">
+            Download driver
+        </a>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary cancel-btn" ng-click="cancel()">Cancel</button>
+        <button id="wb-sparql-submit" class="btn btn-primary create-btn" ng-click="ok()" type="submit">
+            {{okButtonText}}
+        </button>
+    </div>
+</form>

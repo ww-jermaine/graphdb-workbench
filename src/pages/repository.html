@@ -53,7 +53,9 @@
                         <div ng-repeat="file in ontopRepoFiles" class="form-group row" ng-if="repositoryInfo.type === 'ontop'">
                             <label for="file" class="col-xs-3 col-sm-3 col-md-3 col-form-label">{{repositoryInfo.params[file].label + (isRequiredOntopRepoFile(file) ? '*' : '')}}</label>
                             <div class="col-xs-4 col-sm-4 col-md-4">
-                                    <a class="btn btn-link ot-edit-input" ng-if="ontopRepoFileNames[file]" ng-click="editFile(file)"
+                                    <a class="btn btn-link ot-edit-input"
+                                       ng-if="'propertiesFile' !== file && ontopRepoFileNames[file]"
+                                       ng-click="editFile(file)"
                                        tooltip="Edit file"
                                        tooltip-placement="top"
                                        tooltip-trigger="mouseenter">
@@ -61,9 +63,9 @@
                                     </a>
                                     <input class="form-control" id="file" ng-readonly="true" tooltip="{{ontopRepoFileNames[file]}}" placeholder="{{isRequiredOntopRepoFile(file) ? 'This file is required' : ''}}" ng-model="ontopRepoFileNames[file]">
                             </div>
-                            <div class="form-group col-xs-5 col-sm-4 col-md-2 col-md-offset-3">
+                            <div ng-if="'propertiesFile' !== file" class="form-group col-xs-5 col-sm-4 col-md-2 col-md-offset-3">
                                 <div class="btn btn-outline-primary btn-sm">
-                                    <div ngf-select ngf-change="uploadOntopRepoFile($files, file)" ngf-multiple="false "
+                                    <div ngf-select ngf-change="uploadOntopRepoFile($files, file)" ngf-multiple="false"
                                          class="selectFiles pointer clearfix"
                                          tooltip-trigger="mouseenter">
                                         <em ng-hide="uploadFileLoader" class="fa fa-upload fa-2x"></em>&nbsp;
@@ -71,6 +73,18 @@
                                         <span class="pageInfo" style="vertical-align: super; color: #8a8a8a;">Upload {{ontopRepoFileLabels[file]}}</span>
                                     </div>
                                 </div>
+                                <input class="form-control" id="file" type="file" name="file" style="display: none;"/>
+                            </div>
+                            <div ng-if="'propertiesFile' === file" class="form-group col-xs-5 col-sm-4 col-md-2 col-md-offset-3">
+                                <button type="submit" class="btn btn-outline-primary btn-sm"
+                                        ng-click="showPropertiesFileModal(file)">
+                                    <div>
+                                        <em ng-hide="uploadFileLoader" class="{{ontopFileCreated(file) ? 'icon-edit fa fa-2x' : 'fa fa-upload fa-2x'}}"></em>&nbsp;
+                                        <div ng-show="uploadFileLoader" onto-loader size="24" class="spinner-container ot-loader"></div>
+                                        <span class="pageInfo" style="text-align: center; color: #8a8a8a;">
+                                            {{(ontopFileCreated(file) ? 'Edit ' : 'Create ') + ontopRepoFileLabels[file]}}</span>
+                                    </div>
+                                </button>
                                 <input class="form-control" id="file" type="file" name="file" style="display: none;"/>
                             </div>
                             <div class="form-group col-xs-2 col-sm-2 col-md-2">

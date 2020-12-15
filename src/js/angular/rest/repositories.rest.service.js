@@ -19,7 +19,10 @@ function RepositoriesRestService($http) {
         getCluster,
         getRepositoryFileContent,
         updateRepositoryFileContent,
-        validateOntopPropertiesConnection
+        validateOntopPropertiesConnection,
+        createPropertiesFile,
+        updatePropertiesFile,
+        getPropertiesFileContent
     };
 
     function getRepository(repositoryid) {
@@ -64,6 +67,19 @@ function RepositoriesRestService($http) {
 
     function updateRepositoryFileContent(fileLocation, content) {
         return $http.post(`${REPOSITORIES_ENDPOINT}/updateFile`, JSON.stringify(content), {params: {fileLocation: fileLocation}});
+    }
+
+    function createPropertiesFile(repositoryID, content) {
+        return $http.post(`${REPOSITORIES_ENDPOINT}/${repositoryID}/createPropertiesFile`, JSON.stringify(content));
+    }
+
+    function updatePropertiesFile(fileLocation, content) {
+        return $http.post(`${REPOSITORIES_ENDPOINT}/updatePropertiesFile`,
+            JSON.stringify(content), {params: {fileLocation: fileLocation}});
+    }
+
+    function getPropertiesFileContent(file) {
+        return $http.get(`${REPOSITORIES_ENDPOINT}/getPropertiesFile`, {params: {fileLocation: file}});
     }
 
     function validateOntopPropertiesConnection(ontopProperties) {
