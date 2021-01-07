@@ -446,9 +446,9 @@ function EditLocationCtrl($scope, $modalInstance, location) {
     };
 }
 
-AddRepositoryCtrl.$inject = ['$scope', 'toastr', '$repositories', '$location', 'Upload', 'isEnterprise', 'isFreeEdition', '$routeParams', 'RepositoriesRestService', '$modal'];
+AddRepositoryCtrl.$inject = ['$scope', 'toastr', '$repositories', '$location', 'Upload', 'isEnterprise', 'isFreeEdition', '$routeParams', 'RepositoriesRestService', '$modal', 'TestService'];
 
-function AddRepositoryCtrl($scope, toastr, $repositories, $location, Upload, isEnterprise, isFreeEdition, $routeParams, RepositoriesRestService, $modal) {
+function AddRepositoryCtrl($scope, toastr, $repositories, $location, Upload, isEnterprise, isFreeEdition, $routeParams, RepositoriesRestService, $modal, TestService) {
 
     $scope.rulesets = staticRulesets.slice();
 
@@ -460,6 +460,8 @@ function AddRepositoryCtrl($scope, toastr, $repositories, $location, Upload, isE
         title: '',
         type: ''
     };
+
+    console.log(TestService.useScope($scope))
 
     $scope.hasActiveLocation = function () {
         return $repositories.hasActiveLocation();
