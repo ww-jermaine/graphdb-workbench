@@ -340,7 +340,7 @@ function ClusterManagementCtrl($scope, $http, $q, toastr, $repositories, $modal,
         });
     };
 
-    $scope.addOrUpdateLink = function (source, target, status, timestamp) {
+    $scope.addOrUpdateLink = function (source, target, status, timestamp, lastErrorMsg) {
         var key = source.location + '|' + target.location;
         var link = $scope.linksHash[key];
         var reverseKey = target.location + '|' + source.location;
@@ -364,6 +364,7 @@ function ClusterManagementCtrl($scope, $http, $q, toastr, $repositories, $modal,
         if (reverseLink && reverseLink['reversePeerMissing']) {
             reverseLink['reversePeerMissing'] = false;
         }
+        link['lastErrorMsg'] = lastErrorMsg || '';
         $scope.linksHash[key] = link;
 
         if ($scope.updateWarnings) { // function isn't defined before render() is called
@@ -499,7 +500,7 @@ function ClusterManagementCtrl($scope, $http, $q, toastr, $repositories, $modal,
                     }
                     // end of debug stuff
 
-                    $scope.addOrUpdateLink(node, $scope.urlToNode[worker.location], status, timestamp);
+                    $scope.addOrUpdateLink(node, $scope.urlToNode[worker.location], status, timestamp, worker.lastError);
                 });
             }).catch(function () {
                 return true;
