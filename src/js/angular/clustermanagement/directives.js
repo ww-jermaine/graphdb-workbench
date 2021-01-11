@@ -1,4 +1,5 @@
 import 'angular/utils/local-storage-adapter';
+import d3tip from 'lib/d3-tip/d3-tip-patch';
 
 const navigationBarWidthFull = 240;
 const navigationBarWidthCollapsed = 70;
@@ -387,13 +388,15 @@ clusterManagementDirectives.directive('clusterGraphicalView', ['$window', '$time
                                 scope.disconnectLinkConfirm(d, restart);
                             }
                         })
-                        .on('mouseover', function () {
+                        .on('mouseover', function (d) {
                             $('.node-default-tip').hide();
                             $('.node-disconnect-tip').show();
+                            showLastErrorToolTip(d);
                         })
                         .on('mouseout', function () {
                             $('.node-default-tip').show();
                             $('.node-disconnect-tip').hide();
+                            hideLastErrorToolTip();
                         });
 
                     pathLinks = path.select('path');
@@ -436,6 +439,65 @@ clusterManagementDirectives.directive('clusterGraphicalView', ['$window', '$time
                         .classed('reflexive', function (d) {
                             return d.reflexive;
                         });
+
+                    let lastErrorTipElement;
+
+                    const nodeLastErrorTip = d3tip()
+                        .attr('class', 'd3-tip')
+                        .customPosition(function (d) {
+                            const bbox = lastErrorTipElement.getBoundingClientRect();
+                            const textWidth = calculateWidth(d);
+                            return {
+                                // Position the tooltips according
+                                // to whether they are horizontal
+                                top: (bbox.height > 1 ? bbox.top + 15 : bbox.top - 80) + 'px',
+                                left: (bbox.left + 30) + 'px',
+                                width: textWidth + 'px'
+                            };
+                        })
+                        .html(function (d) {
+                            return createTipText(d);
+                        });
+
+                    // This will create text that will appear in d3tip
+                    const createTipText = function (d) {
+                        let html = '';
+                        if (d.lastErrorMsg) {
+                            html += d.lastErrorMsg;
+                        }
+                        return html;
+                    };
+
+                    const calculateWidth = function (d) {
+                        const text = createTipText(d);
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext("2d");
+                        ctx.font = "13px Arial";
+
+                        return ctx.measureText(text).width / 2;
+                    };
+
+                    // Shows node last error in tooltip
+                    const showLastErrorToolTip = function (d) {
+                        const thisLastErrorTipElement = lastErrorTipElement = d3.event.target;
+                        if (lastErrorTipElement === thisLastErrorTipElement &&
+                            d.lastErrorMsg && d.status === 'OFF') {
+                            let toolTip = d3.select('.d3-tip');
+                            // style the tooltip of the link
+                            toolTip.style('background-color', '#F04E23');
+                            toolTip.style('color', '#ffffff');
+                            toolTip.style('text-align', 'center');
+                            nodeLastErrorTip.show(d, lastErrorTipElement);
+                        }
+                    };
+
+                    // Hides last error tooltip
+                    const hideLastErrorToolTip = function () {
+                        lastErrorTipElement = null;
+                        nodeLastErrorTip.hide();
+                    };
+
+                    svg.call(nodeLastErrorTip);
 
                     // add new nodes
                     var g = circle.enter().append('svg:g');
