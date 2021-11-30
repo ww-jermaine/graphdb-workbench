@@ -412,10 +412,13 @@ function GraphsVisualizationsCtrl($scope, $rootScope, $repositories, toastr, $ti
 
     function convertTripleToLinkId(link) {
         let triple = link.split(' ');
-        return [triple[0], triple[2]].join('>');
+        return [triple[0], triple[1], triple[2]].join('>');
     }
 
     function convertLinkDataToLinkId(link) {
+        if (link.describesTriple) {
+            return [link.source.iri, link.rawPredicates[0], link.target.iri].join('>');
+        }
         return [link.source.iri, link.target.iri].join('>');
     }
 
@@ -424,7 +427,7 @@ function GraphsVisualizationsCtrl($scope, $rootScope, $repositories, toastr, $ti
         if (el) {
             return (typeof el.__data__.x === "undefined" ? -1 : el.__data__.x);
         }
-        return -1;
+        return 1;
     }
 
     function getYForTriple(id) {
@@ -432,7 +435,71 @@ function GraphsVisualizationsCtrl($scope, $rootScope, $repositories, toastr, $ti
         if (el) {
             return (typeof el.__data__.y === "undefined" ? -1 : el.__data__.y);
         }
-        return -1;
+        return 1;
+    }
+
+    function getXForSource(link) {
+        if (link.source.isTriple) {
+            return getXForTriple(link.source.iri);
+        }
+
+        if (link.index === 0) {
+            return link.source.x;
+        }
+
+        if (link.index % 2 === 0) {
+            return link.source.x + (link.index * 6);
+        } else {
+            return link.source.x - (Math.ceil(link.index / 2) * 12);
+        }
+    }
+
+    function getYForSource(link) {
+        if (link.source.isTriple) {
+            return getYForTriple(link.source.iri);
+        }
+
+        if (link.index === 0) {
+            return link.source.y;
+        }
+
+        if (link.index % 2 === 0) {
+            return link.source.y + (link.index * 6);
+        } else {
+            return link.source.y - (Math.ceil(link.index / 2) * 12);
+        }
+    }
+
+    function getXForTarget(link) {
+        if (link.target.isTriple) {
+            return getXForTriple(link.target.iri);
+        }
+
+        if (link.index === 0) {
+            return link.target.x;
+        }
+
+        if (link.index % 2 === 0) {
+            return link.target.x + (link.index * 6);
+        } else {
+            return link.target.x - (Math.ceil(link.index / 2) * 12);
+        }
+    }
+
+    function getYForTarget(link) {
+        if (link.target.isTriple) {
+            return getYForTriple(link.target.iri);
+        }
+
+        if (link.index === 0) {
+            return link.target.y;
+        }
+
+        if (link.index % 2 === 0) {
+            return link.target.y + (link.index * 6);
+        } else {
+            return link.target.y - (Math.ceil(link.index / 2) * 12);
+        }
     }
 
     function createTriple(value) {
@@ -491,6 +558,30 @@ function GraphsVisualizationsCtrl($scope, $rootScope, $repositories, toastr, $ti
             Array.prototype.push.apply(this.links, matchLinksToNodes(newLinks, nodes));
 
             this.computeConnectedness();
+
+
+            let seenNodes = [];
+            _.each(graph.links, function (link, index) {
+                if (seenNodes.includes(index)) {
+                    return;
+                }
+                let count = link.describesTriple ? 1 : 0;
+                link.index = count;
+                let subLincFound = false;
+                for (let i = index + 1; i < graph.links.length; i++) {
+                    let innerLink = graph.links[i];
+                    if (innerLink.source.iri === link.source.iri && innerLink.target.iri === link.target.iri) {
+                        if (innerLink.describesTriple) {
+                            innerLink.index = ++count;
+                            subLincFound = true;
+                        }
+                        seenNodes.push(i);
+                    }
+                }
+                if (!subLincFound && link.describesTriple) {
+                    link.index = 0;
+                }
+            });
         };
 
         const countLinks = function (d, links) {
@@ -533,8 +624,8 @@ function GraphsVisualizationsCtrl($scope, $rootScope, $repositories, toastr, $ti
                     if (l.target.isTriple) {
                         sourceTriples.push(l.target.iri);
                     }
-                    if (!l.source.isTriple && !l.target.isTriple) {
-                        sourceTriples.push([l.source.iri, l.target.iri].join('>'))
+                    if (l.describesTriple) {
+                        sourceTriples.push([l.source.iri, l.rawPredicates[0], l.target.iri].join('>'))
                     }
                 }
                 return isRejected;
@@ -551,12 +642,13 @@ function GraphsVisualizationsCtrl($scope, $rootScope, $repositories, toastr, $ti
                                 let targetSplit = l.target.iri.split('>');
                                 targetTriples.push({
                                     source: targetSplit[0],
-                                    target: targetSplit[1]
+                                    pred: targetSplit[1],
+                                    target: targetSplit[2]
                                 });
                             }
                             return l.source.iri === source ||
                                     l.target.iri === source ||
-                                    (l.source.iri === sourceSplit[0] && l.target.iri === sourceSplit[1]);
+                                    (l.source.iri === sourceSplit[0] && l.rawPredicates[0] === sourceSplit[1] && l.target.iri === sourceSplit[2]);
                         });
                     }
                 });
@@ -564,7 +656,7 @@ function GraphsVisualizationsCtrl($scope, $rootScope, $repositories, toastr, $ti
 
             targetTriples.forEach((target) => {
                 this.links = _.reject(this.links, function (l) {
-                    return l.source.iri === target.source && l.target.iri === target.target;
+                    return l.source.iri === target.source && l.rawPredicates[0] === target.pred && l.target.iri === target.target;
                 });
             });
 
@@ -608,7 +700,7 @@ function GraphsVisualizationsCtrl($scope, $rootScope, $repositories, toastr, $ti
                 this.links = _.reject(this.links, function (l) {
                     return l.source.iri === link && countLinks(l.target, links) === 1 ||
                             l.target.iri === link && countLinks(l.source, links) === 1 ||
-                            (l.source.iri === linkSplit[0] && l.target.iri === linkSplit[1]);
+                            (l.source.iri === linkSplit[0] && l.rawPredicates[0] === linkSplit[1] && l.target.iri === linkSplit[2]);
                 });
             }
             links = this.links;
@@ -620,7 +712,8 @@ function GraphsVisualizationsCtrl($scope, $rootScope, $repositories, toastr, $ti
         };
 
         this.addTriple = function (triple) {
-            let key = convertTripleToLinkId(triple.iri)
+            let iriParts = triple.iri.split(' ');
+            let key = [iriParts[0], iriParts[1], iriParts[2]].join('>');
             if (!this.triples.has(key)) {
                 this.triples.set(key, triple);
             }
@@ -631,7 +724,9 @@ function GraphsVisualizationsCtrl($scope, $rootScope, $repositories, toastr, $ti
                 let source = {};
                 let target = {};
                 if (link.tripleSource) {
-                    source.iri = convertTripleToLinkId(link.source);
+                    let parts = link.source.split(' ');
+                    source.iri = [parts[0], parts[1], parts[2]].join('>');
+                    source.size = 0;
                     source.weight = 0;
                 } else {
                     source = _.find(nodes, function (o) {
@@ -640,9 +735,10 @@ function GraphsVisualizationsCtrl($scope, $rootScope, $repositories, toastr, $ti
                 }
                 source.isTriple = link.tripleSource;
                 if (link.tripleTarget) {
-                    target.iri = convertTripleToLinkId(link.target);
-                    // size for target is needed
-                    target.size = 48;
+                    let parts = link.target.split(' ');
+                    target.iri = [parts[0], parts[1], parts[2]].join('>');
+                    // size for triple target is needed and should be 0
+                    target.size = 0;
                     target.weight = 0;
                 } else {
                     target = _.find(nodes, function (o) {
@@ -653,7 +749,10 @@ function GraphsVisualizationsCtrl($scope, $rootScope, $repositories, toastr, $ti
                 return {
                     "source": source,
                     "target": target,
-                    "predicates": link.predicates
+                    "predicates": link.predicates,
+                    "rawPredicates": link.rawPredicates,
+                    "describesTriple": link.describesTriple,
+                    "index": 0
                 };
             });
         }
@@ -1310,7 +1409,7 @@ function GraphsVisualizationsCtrl($scope, $rootScope, $repositories, toastr, $ti
                 }
                 return "predicate";
             })
-            .attr("dy", "-0.5em")
+            .attr("dy", "-0.3em")
             .style("text-anchor", "middle")
             .style("display", $scope.saveSettings.showLinksText ? "" : "none")
             .on("mouseover", function (d) {
@@ -1611,23 +1710,23 @@ function GraphsVisualizationsCtrl($scope, $rootScope, $repositories, toastr, $ti
 
             // recalculate links attributes
             link.attr("x1", function (d) {
-                return (d.source.isTriple ? getXForTriple(d.source.iri) : d.source.x);
+                return getXForSource(d);
             }).attr("y1", function (d) {
-                return (d.source.isTriple ? getYForTriple(d.source.iri) : d.source.y);
+                return getYForSource(d);
             }).attr("x2", function (d) {
-                return (d.target.isTriple ? getXForTriple(d.target.iri) : d.target.x);
+                return getXForTarget(d);
             }).attr("y2", function (d) {
-                return (d.target.isTriple ? getYForTriple(d.target.iri) : d.target.y);
+                return getYForTarget(d);
             });
 
             // recalculate predicates attributes
             predicate.attr("x", function (d) {
-                let sourceX = d.source.isTriple ? getXForTriple(d.source.iri) : d.source.x;
-                let targetX = d.target.isTriple ? getXForTriple(d.target.iri) : d.target.x;
+                let sourceX = getXForSource(d);
+                let targetX = getXForTarget(d);
                 return d.x = (sourceX + targetX) * 0.5;
             }).attr("y", function (d) {
-                let sourceY = d.source.isTriple ? getYForTriple(d.source.iri) : d.source.y;
-                let targetY = d.target.isTriple ? getYForTriple(d.target.iri) : d.target.y;
+                let sourceY = getYForSource(d);
+                let targetY = getYForTarget(d);
                 return d.y = (sourceY + targetY) * 0.5;
             }).attr("transform", function (d) {
                 const angle = findAngleBetweenNodes(d, d.direction);
@@ -1729,17 +1828,14 @@ function GraphsVisualizationsCtrl($scope, $rootScope, $repositories, toastr, $ti
 
     // find angle between pair of nodes so we can position predicates
     function findAngleBetweenNodes(linkedNodes, direction) {
-        const sourceNode = linkedNodes.source;
-        const targetNode = linkedNodes.target;
-
         const p1 = {
-            x: (sourceNode.isTriple ? getXForTriple(sourceNode.iri) : sourceNode.x),
-            y: (sourceNode.isTriple ? getYForTriple(sourceNode.iri) : sourceNode.y)
+            x: getXForSource(linkedNodes),
+            y: getYForSource(linkedNodes)
         };
 
         const p2 = {
-            x: (targetNode.isTriple ? getXForTriple(targetNode.iri) : targetNode.x),
-            y: (targetNode.isTriple ? getYForTriple(targetNode.iri) : targetNode.y)
+            x: getXForTarget(linkedNodes),
+            y: getYForTarget(linkedNodes)
         };
         if (direction) {
             return Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
