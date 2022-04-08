@@ -4,20 +4,49 @@ angular
 
 ClusterRestService.$inject = ['$http'];
 
-const CLUSTER_MASTERS_ENDPOINT = 'rest/cluster/masters';
+// const CLUSTER_MASTERS_ENDPOINT = 'rest/cluster/masters';
+const CLUSTER_GROUP_ENDPOINT = 'rest/cluster';
 
 function ClusterRestService($http) {
     return {
-        getMaster,
-        configureMaster,
-        cloneRepository,
-        connectWorker,
-        disconnectWorker,
-        disconnectNodes,
-        connectNodes
+        getGroupConfig,
+        createGroupConfig,
+        deleteGroupConfig,
+        addNodesToGroup,
+        removeNodesFromGroup,
+        getGroupStatus,
+        getNodeStatus
     };
 
-    function getMaster(masterRepositoryID, data = {}) {
+    function getGroupConfig() {
+        return $http.get(`${CLUSTER_GROUP_ENDPOINT}/config`);
+    }
+
+    function createGroupConfig(groupConfiguration) {
+        return $http.post(`${CLUSTER_GROUP_ENDPOINT}/config`, groupConfiguration);
+    }
+
+    function deleteGroupConfig() {
+        return $http.delete(`${CLUSTER_GROUP_ENDPOINT}/config`);
+    }
+
+    function addNodesToGroup(nodesArray) {
+        return $http.post(`${CLUSTER_GROUP_ENDPOINT}/config/node`, nodesArray);
+    }
+
+    function removeNodesFromGroup(nodesArray) {
+        return $http.delete(`${CLUSTER_GROUP_ENDPOINT}/config/node`, nodesArray);
+    }
+
+    function getGroupStatus() {
+        return $http.get(`${CLUSTER_GROUP_ENDPOINT}/group/status`);
+    }
+
+    function getNodeStatus() {
+        return $http.get(`${CLUSTER_GROUP_ENDPOINT}/node/status`);
+    }
+
+/*    function getMaster(masterRepositoryID, data = {}) {
         return $http.get(`${CLUSTER_MASTERS_ENDPOINT}/${masterRepositoryID}`, data);
     }
 
@@ -36,7 +65,7 @@ function ClusterRestService($http) {
             newNodeRepositoryID: data.repositoryID,
             newNodeLocation: data.locationUri,
             newNodeTitle: data.repositoryTitle
-        })
+        });
     }
 
     function connectWorker(master, masterLocation, workerLocation) {
@@ -47,7 +76,7 @@ function ClusterRestService($http) {
                 workerURL: workerLocation,
                 masterLocation: masterLocation
             }
-        })
+        });
     }
 
     function disconnectWorker(master, params) {
@@ -72,5 +101,5 @@ function ClusterRestService($http) {
             method: 'POST',
             data
         });
-    }
+    }*/
 }

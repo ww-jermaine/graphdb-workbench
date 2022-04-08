@@ -1,0 +1,307 @@
+<link href="css/clustermanagement.css?v=[AIV]{version}[/AIV]" rel="stylesheet"/>
+<title>Cluster Management</title>
+
+<h1>
+    {{title}}
+    <span class="btn btn-link"
+          ng-class="{ 'help-button': showExternalElements, 'help-button-disabled': !showExternalElements }"
+          popover-template="'js/angular/templates/titlePopoverTemplate.html'"
+          popover-trigger="mouseenter"
+          popover-placement="bottom"
+          popover-append-to-body="true"><span class="icon-info"></span></span>
+</h1>
+
+<div onto-loader-new
+     ng-show="loader"
+     class="cluster-loader"
+     message="getLoaderMessage"
+     size="75">
+</div>
+
+<div class="clearfix mb-2">
+    <button type="button" class="btn btn-primary create-cluster-group-btn"
+            ng-click="createClusterGroup()"
+            tooltip="Create a new cluster group" tooltip-placement="top"
+            ng-disabled="clusterConfiguration">
+        <span class="icon-plus"></span> Create cluster group
+    </button>
+    <button type="button" class="btn btn-primary change-cluster-group-configuration-btn" ng-hide="true"
+            ng-click="dropRepository()"
+            tooltip="Change cluster group configuration" tooltip-placement="top"
+            ng-disabled="!clusterConfiguration">
+        <span class="icon-edit"></span> Change configuration
+    </button>
+    <button type="button" class="btn btn-secondary delete-cluster-group-btn"
+            ng-click="showDeleteDialog()"
+            tooltip="Delete cluster group" tooltip-placement="top"
+            ng-disabled="!clusterConfiguration">
+        <span class="icon-trash"></span> Delete cluster group
+    </button>
+    <button type="button" class="btn btn-secondary add-node-to-cluster-group-btn" ng-hide="true"
+            ng-click="dropRepository()"
+            tooltip="Add node to cluster group" tooltip-placement="top"
+            ng-disabled="!clusterConfiguration">
+        <span class="icon-plus"></span> Add node
+    </button>
+    <button type="button" class="btn btn-secondary remove-node-from-cluster-group-btn" ng-hide="true"
+            ng-click="dropRepository()"
+            tooltip="Remove node from cluster group" tooltip-placement="top"
+            ng-disabled="!clusterConfiguration">
+        <span class="icon-trash"></span> Remove node
+    </button>
+</div>
+
+<div class="ng-scope" ng-hide="clusterConfiguration">
+    <p class="alert alert-danger">
+        No cluster is configured.
+    </p>
+</div>
+
+<div ng-if="clusterConfiguration">
+    <div class="row" ng-if="clusterConfiguration">
+        <div class="col-lg-6">
+            <div class="card cluster-group-configuration-card">
+                <div class="card-block">
+                    <div class="clearfix">
+                        <h3 class="mb-0">
+                        <span class="collapsible-heading collapsed" data-toggle="collapse" data-target="#group-configuration"
+                              aria-expanded="false" aria-controls="group-configuration">
+                            <em class="icon-caret-down text-muted"></em>
+                            Cluster group configuration
+                        </span>
+                        </h3>
+                    </div>
+                    <div class="collapse" id="group-configuration">
+                        <div class="mt-1">
+                            <div class="col-xs-8 mb-1 total-statements">
+                                <h4>Configuration</h4>
+                                <dl>
+                                    <dt>Election Minimum Timeout</dt>
+                                    <dd>{{clusterConfiguration.electionMinTimeout}}</dd>
+                                    <dt>Election Range Timeout</dt>
+                                    <dd>{{clusterConfiguration.electionRangeTimeout}}</dd>
+                                    <dt>Heartbeat Interval</dt>
+                                    <dd>{{clusterConfiguration.heartbeatInterval}}</dd>
+                                    <dt>Message Size KB</dt>
+                                    <dd>{{clusterConfiguration.messageSizeKB}}</dd>
+                                    <dt>Verification Timeout</dt>
+                                    <dd>{{clusterConfiguration.verificationTimeout}}</dd>
+                                </dl>
+                                <!--  <div class="col-xs-8">
+                                      <div>Election Minimum Timeout:</div>
+                                      <div>Election Range Timeout:</div>
+                                      <div>Heartbeat Interval:</div>
+                                      <div>Message Size KB:</div>
+                                      <div>Verification Timeout:</div>
+                                  </div>
+                                  <div class="col-xs-4">
+                                      <div>{{groupConfiguration.electionMinTimeout}}</div>
+                                      <div>{{groupConfiguration.electionRangeTimeout}}</div>
+                                      <div>{{groupConfiguration.heartbeatInterval}}</div>
+                                      <div>{{groupConfiguration.messageSizeKB}}</div>
+                                      <div>{{groupConfiguration.verificationTimeout}}</div>
+                                  </div>-->
+                            </div>
+                            <div class="col-xs-4">
+                                <h4>Nodes list</h4>
+                                <ul>
+                                    <li ng-repeat="node in clusterConfiguration.nodes">
+                                        {{node}}
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card cluster-group-information-card">
+                <div class="card-block">
+                    <div class="clearfix">
+                        <h3 class="mb-0">
+                        <span class="collapsible-heading collapsed" data-toggle="collapse" data-target="#group-status"
+                              aria-expanded="false" aria-controls="group-status">
+                            <em class="icon-caret-down text-muted"></em>
+                              Cluster group status
+                        </span>
+                        </h3>
+                    </div>
+                    <div class="collapse" id="group-status">
+                        <div class="mt-1" ng-if="!!leader">
+                            <div class="col-xs-6 mb-1">
+                                <h4>Leader</h4>
+                                <dl>
+                                    <dt>Address</dt>
+                                    <dd>{{leader.address}}</dd>
+                                    <dt>Endpoint</dt>
+                                    <dd>{{leader.endpoint}}</dd>
+                                    <dt>State</dt>
+                                    <dd>{{leader.nodeState}}</dd>
+                                    <dt>Term</dt>
+                                    <dd>{{leader.term}}</dd>
+                                </dl>
+                            </div>
+                            <div class="col-xs-6 container">
+                                <h4>Followers</h4>
+                                <div class="row">
+                                    <div>
+                                        <ol>
+                                            <li ng-repeat="node in followers">
+                                                {{node.address}} - {{node.syncStatus}}
+                                            </li>
+                                        </ol>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-1" ng-if="!leader">
+                            <div class="col-xs-12">
+                                <h4>Election in progress</h4>
+<!--                                <div class="container">-->
+                                    <h5>Nodes status</h5>
+<!--                                    <div class="row">-->
+<!--                                        <div>-->
+                                            <ol>
+                                                <li ng-repeat="node in followers">
+                                                    {{node.address}} - {{node.nodeState}}
+                                                </li>
+                                            </ol>
+<!--                                        </div>-->
+<!--                                    </div>-->
+<!--                                </div>-->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="nodes" ng-show="hasNodes">
+        <div cluster-graphical-view></div>
+    </div>
+
+    <div class="nodetooltip" ng-hide="selectedNode == null">
+        <strong>{{selectedNode.location}}</strong>
+        <hr style="margin-top: 10px; margin-bottom: 10px"/>
+        <div ng-show="selectedNode.disabledReason" class="alert alert-warning" ng-bind-html="selectedNode.disabledReason"></div>
+        <div ng-show="isWorker(selectedNode)">
+            <div>
+                <div ng-show="hasInfo(selectedNode)">
+                    <div>
+                        <div class="row">
+                            <div class="col-sm-6">Average task time</div>
+                            <div class="col-sm-6">{{selectedNode.averageTaskTime}}</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-6">Running tasks</div>
+                            <div class="col-sm-6">{{selectedNode.runningTasks}}</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-6">Completed tasks</div>
+                            <div class="col-sm-6">{{selectedNode.completedTasks}}</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-6">Failed tasks</div>
+                            <div class="col-sm-6">{{selectedNode.failedTasks}}</div>
+                        </div>
+                    </div>
+                    <div class="fingerprint">{{selectedNode.fingerprint}}</div>
+                </div>
+                <button ng-click="showCloneModal()" ng-disabled="selectedNode.disabledReason" class="btn btn-sm btn-success" aria-expanded="false" id="cloneButton">Clone to another location</button>
+            </div>
+        </div>
+        <div ng-show="!isWorker(selectedNode)">
+            <div ng-hide="selectedNode.disabledReason">
+                <div ng-show="hasInfo(selectedNode)">
+                    <div class="row" id="selectedNodeReadonly" ng-click="setReadonly(!selectedNode.readonly)">
+                        <div class="col-sm-6">Read only</div>
+                        <div class="col-sm-6">
+                    <span class="switch">
+                        <input type="checkbox" ng-checked="selectedNode.readonly" class="switch"/>
+                        <label for="selectedNodeReadonly"></label>
+                    </span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-6">Mode</div>
+                        <div class="col-sm-6">
+                            <input type="radio" id="selectedNodeModeNormal" ng-change="setMode(selectedNode.mode)" ng-model="selectedNode.mode" value="NORMAL"/>
+                            <label for="selectedNodeModeNormal">Normal</label>
+                            <input type="radio" id="selectedNodeModeMute" ng-change="setMode(selectedNode.mode)" ng-model="selectedNode.mode" value="MUTE"/>
+                            <label for="selectedNodeModeNormal">Mute</label>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-6">Average read time</div>
+                        <div class="col-sm-6">{{selectedNode.averageReadTime}}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-6">Completed reads/writes</div>
+                        <div class="col-sm-6">{{selectedNode.completedReads}}/{{selectedNode.completedWrites}}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-6">Failed reads/writes</div>
+                        <div class="col-sm-6">{{selectedNode.failedReads}}/{{selectedNode.failedWrites}}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-6">Running reads/writes</div>
+                        <div class="col-sm-6">{{selectedNode.runningReads}}/{{selectedNode.runningWrites}}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-6">Pending writes</div>
+                        <div class="col-sm-6">{{selectedNode.pendingWrites}}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="node-tip node-connect-tip">Drag and drop nodes to connect them or click to get additional information.</div>
+    <div class="node-tip node-disconnect-tip">Click link to disconnect the nodes</div>
+    <div class="node-tip node-warning-tip">This master is a peer to the other master but not vice versa, drag and drop the masters to fix it.</div>
+
+    <div class="container legend-container" ng-show="hasNodes && !loader">
+        <div class="row">
+            <div class="legend legend-on"></div>
+            <div class="legend-text">ON</div>
+        </div>
+        <div class="row">
+            <div class="legend legend-off"></div>
+            <div class="legend-text">OFF</div>
+        </div>
+        <div class="row">
+            <div class="legend legend-outofsync"></div>
+            <div class="legend-text">OUT OF SYNC</div>
+        </div>
+        <div class="row">
+            <div class="legend legend-outofsync-forced"></div>
+            <div class="legend-text">OUT OF SYNC FORCED</div>
+        </div>
+        <div class="row">
+            <div class="legend legend-writing"></div>
+            <div class="legend-text">WRITING</div>
+        </div>
+        <div class="row">
+            <div class="legend legend-writing-copy"></div>
+            <div class="legend-text">WRITING COPY</div>
+        </div>
+        <div class="row">
+            <div class="legend legend-waiting-write"></div>
+            <div class="legend-text">WAITING WRITE</div>
+        </div>
+        <div class="row">
+            <div class="legend legend-replication-server"></div>
+            <div class="legend-text">REPLICATION SERVER</div>
+        </div>
+        <div class="row">
+            <div class="legend legend-replication-client"></div>
+            <div class="legend-text">REPLICATION CLIENT</div>
+        </div>
+        <div class="row">
+            <div class="legend legend-unknown"></div>
+            <div class="legend-text">UNKNOWN</div>
+        </div>
+    </div>
+</div>

@@ -23,15 +23,8 @@ function containsIPV4(ip) {
     return false;
 }
 
-function workerIsConnected(n) {
-    return n.weight > 0;
-}
 
-function masterIsConnected(n) {
-    return n.weight > 0;
-}
-
-var clusterManagementDirectives = angular.module('graphdb.framework.clustermanagement.directives', [
+var clusterManagementDirectives = angular.module('graphdb.framework.clustermanagement.raftDirectives', [
     'graphdb.framework.utils.localstorageadapter'
 ]);
 
@@ -41,7 +34,7 @@ clusterManagementDirectives.directive('clusterGraphicalView', ['$window', '$time
         restrict: 'A',
         //scope: {}, //no need for isolated scope here
         link: function (scope, element) {
-      /*      function getWindowWidth() {
+            function getWindowWidth() {
                 var collapsed = LocalStorageAdapter.get(LSKeys.MENU_STATE) === 'collapsedMenu';
                 navigationBarWidth = collapsed ? navigationBarWidthCollapsed : navigationBarWidthFull;
 
@@ -55,10 +48,7 @@ clusterManagementDirectives.directive('clusterGraphicalView', ['$window', '$time
             }
 
             var width = getWindowWidth(),
-                height = getWindowHeight(),
-                colors = function (i) {
-                    return clusterColors[i % clusterColors.length];
-                };
+                height = getWindowHeight();
 
             scope.width = function () {
                 return width;
@@ -137,92 +127,27 @@ clusterManagementDirectives.directive('clusterGraphicalView', ['$window', '$time
                 .on('mousemove', mousemove)
                 .on('mouseup', mouseup);
 
-            var maxScreenWidthForReposition = 1200;
             function repositionNodes() {
-                repositionUnconnectedWorkers();
-                repositionUnconnectedMasters();
-                repositionConnectedMastersAndWorkers();
+                repositionConnectedNodes();
             }
 
-            function repositionConnectedMastersAndWorkers() {
-                var masters = [];
-                var workers = [];
-
-                _.each(scope.nodes, function (n) {
-                    if (n.repositoryType === "master" && masterIsConnected(n)) {
-                        masters.push(n);
-                    } else if (n.repositoryType === "worker" && workerIsConnected(n)) {
-                        workers.push(n);
-                    }
-                });
-
-                var horizontalSpacing = scope.width() / 3;
-
-                // Masters initial positions are in the left side of the screen,
-                // ordered top to bottom
-                var mastersSpacing = scope.height() / (masters.length + 1);
-                for (var i = 0; i < masters.length; i++) {
-                    masters[i].px = masters[i].x = horizontalSpacing;
-                    masters[i].py = masters[i].y = mastersSpacing * (i + 1);
-                    masters[i].fixed = false;
-                }
-
-                // Workers initial positions are in the right side of the screen,
-                // ordered top to bottom
-                var workersSpacing = scope.height() / (workers.length + 1);
-                for (var i = 0; i < workers.length; i++) {
-                    workers[i].px = workers[i].x = horizontalSpacing * 2;
-                    workers[i].py = workers[i].y = workersSpacing * (i + 1);
-                    workers[i].fixed = false;
+            function repositionConnectedNodes() {
+                if (scope.nodes.length === 1) {
+                    scope.nodes[0].px = scope.nodes[0].x = (width / 2);
+                    scope.nodes[0].py = scope.nodes[0].y = (height / 2);
+                } else {
+                    _.forEach(scope.nodes, function (node, index) {
+                        // Calculate initial positions for the new nodes based on
+                        // spreading them evenly on a circle around the center of the page.
+                        const theta = 2 * Math.PI * index / scope.nodes.length;
+                        node.px = node.x = (width / 2) - Math.cos(theta) * height / 3;
+                        node.py = node.y = (height / 2) - Math.sin(theta) * height / 3;
+                        node.fixed = false;
+                    });
                 }
             }
 
-            function repositionUnconnectedWorkers() {
-                var workers = _.filter(scope.nodes, function (n) {
-                    return n.repositoryType === 'worker' && !workerIsConnected(n);
-                });
-
-                // Between 3 and 6 rows, depending on window height
-                console.log(Math.floor((height - 50) / 110));
-                var workerRows = Math.max(Math.min(Math.floor(height / 110), 6), 3);
-                var workerColumns = Math.ceil(workers.length / workerRows);
-
-                for (var i = 0; i < workers.length; i++) {
-                    var wRow = i % workerRows;
-                    var wCol = workerColumns - Math.floor(i / workerRows) - 1;
-
-                    var usableWidth = Math.min(maxScreenWidthForReposition, scope.width());
-                    var widthDelta = scope.width() - usableWidth;
-                    workers[i].px = workers[i].x = scope.width() - widthDelta / 2 - wCol * 64 - 35;
-                    workers[i].py = workers[i].y = wRow * 110 + 50;
-
-                    workers[i].fixed = true;
-                }
-            }
-
-            function repositionUnconnectedMasters() {
-                var masters = _.filter(scope.nodes, function (n) {
-                    return n.repositoryType === 'master' && !masterIsConnected(n);
-                });
-
-                // Between 3 and 6 rows, depending on window height
-                var masterRows = Math.max(Math.min(Math.floor((height - 200) / 110), 6), 3);
-                var masterColumns = Math.ceil(masters.length / masterRows);
-
-                for (var i = 0; i < masters.length; i++) {
-                    var mRow = i % masterRows;
-                    var mCol = masterColumns - Math.floor(i / masterRows) - 1;
-
-                    var usableWidth = Math.min(maxScreenWidthForReposition, scope.width());
-                    var widthDelta = scope.width() - usableWidth;
-                    masters[i].px = masters[i].x = widthDelta / 2 + mCol * 64 + 35;
-                    masters[i].py = masters[i].y = mRow * 110 + 50;
-
-                    masters[i].fixed = true;
-                }
-            }
-
-            /!* Main function that builds the d3 UI *!/
+            /* Main function that builds the d3 UI */
             scope.render = function () {
                 if (scope.nodes === undefined) {
                     return;
@@ -246,9 +171,6 @@ clusterManagementDirectives.directive('clusterGraphicalView', ['$window', '$time
                     .size([width, height])
                     .linkStrength(0.05)
                     .linkDistance(function (link) {
-                        if (link.source.repositoryType === "master" && link.target.repositoryType === "master") {
-                            return Math.min(width, 1200) * 0.208;
-                        }
                         return Math.min(width, 1200) * 0.375;
                     })
                     .on('tick', tick);
@@ -312,57 +234,27 @@ clusterManagementDirectives.directive('clusterGraphicalView', ['$window', '$time
                 }
 
                 function nodeColors(d) {
-                    if (d.cluster === undefined || d.cluster.length === 0) {
-                        return "#888";
-                    }
-                    if (d.repositoryType === "worker") {
-                        if (d.cluster.indexOf(currentCluster) >= 0) {
-                            return colors(currentCluster);
-                        } else {
-                            return colors(d.cluster[0]);
-                        }
-                    } else {
-                        return colors(d.cluster);
+                    switch (d.syncStatus) {
+                        case 'IN_SYNC':
+                            return '#0CB0A0';
+                        case 'OUT_OF_SYNC':
+                            return '#ccbb00';
+                        case 'NO_CONNECTION':
+                            return "#888";
                     }
                 }
 
-                function iconTextContour(d) {
-                    if (d.repositoryType === "master") {
-                        if (d.readonly && d.mode === "MUTE") {
-                            return "\ue910";
-                        } else if (d.readonly) {
-                            return "\ue90b";
-                        } else if (d.mode === "MUTE") {
-                            return "\ue90b";
-                        } else {
-                            return "\ue906";
-                        }
-                    } else if (d.repositoryType === "worker") {
-                        return "\ue906";
+                function nodeText(d) {
+                    switch (d.nodeState) {
+                        case 'LEADER':
+                            return 'L';
+                        case 'CANDIDATE':
+                            return 'C';
+                        case 'FOLLOWER':
+                            return "F";
+                        default:
+                            return '';
                     }
-                }
-
-                function iconText(d) {
-                    if (d.repositoryType === "master") {
-                        if (d.readonly && d.mode === "MUTE") {
-                            return "\ue913";
-                        } else if (d.readonly) {
-                            return "\ue938";
-                        } else if (d.mode === "MUTE") {
-                            return "\ue937";
-                        } else {
-                            return "\ue939";
-                        }
-                    } else if (d.repositoryType === "worker") {
-                        return "\ue93c";
-                    }
-                }
-
-                // Updates the status of existing links
-                function updateStatuses() {
-                    path.select('.link').attr('class', function (link) {
-                        return link.status + ' link';
-                    });
                 }
 
                 // update graph (called when needed)
@@ -409,8 +301,6 @@ clusterManagementDirectives.directive('clusterGraphicalView', ['$window', '$time
                         });
 
                     pathGroupWarnings.append('svg:polygon')
-                    //.attr('points', '0 -13.333, 11.547 6.666, -11.547 6.666')
-                    //.attr('points', '0 -14.6666, 12.7017 7.3333, -12.7017 7.3333')
                         .attr('points', '0 -16.6666, 14.4337 8.3333, -14.4337 8.3333')
                         .attr('fill', 'white');
                     pathGroupWarnings.append('svg:text')
@@ -427,14 +317,6 @@ clusterManagementDirectives.directive('clusterGraphicalView', ['$window', '$time
 
                     // circle (node) group
                     circle = circle.data(scope.nodes);
-
-                    // update existing nodes (reflexive & selected visual states)
-
-                    circle.selectAll('.repo')
-                        .style('fill', nodeColors)
-                        .classed('reflexive', function (d) {
-                            return d.reflexive;
-                        });
 
                     // add new nodes
                     var g = circle.enter().append('svg:g');
@@ -522,81 +404,120 @@ clusterManagementDirectives.directive('clusterGraphicalView', ['$window', '$time
                             scope.selectNode(null);
                         });
 
-                    // The icons for workers and masters consist of several elements:
-                    // 1) Outer bigger circle, normally kept transparent and used for better mouse aim
-                    //    as well as for highlighting nodes when it becomes visible.
                     circleGroup.append('svg:circle')
-                        .attr('r', radius + 10);
-
-                    // Create a dummy anchor node
-                    var parser = document.createElement('a');
-
-                    // 2) Contour icon in white to keep the transparent parts of the actual icons white
-                    g.append('svg:text')
-                        .attr('y', 25)
-                        .attr('text-anchor', 'middle')
-                        // attribute not supported by firefox so we instead play with the y axis
-                        //.attr('alignment-baseline', 'central')
-                        .attr('class', 'icon-any')
-                        .attr('fill', 'white')
-                        .text(iconTextContour);
-
-                    // 3) Actual master or worker icon.
-                    g.append('svg:text')
-                        .attr('y', 25)
-                        .attr('text-anchor', 'middle')
-                        // attribute not supported by firefox so we instead play with the y axis
-                        //.attr('alignment-baseline', 'central')
-                        .attr('class', 'icon-any repo')
-                        .attr('fill', nodeColors)
-                        .text(iconText);
-
-                    var gHostLabel = g.append('svg:g');
-
-                    var gHostLabelRect = gHostLabel.append('svg:rect');
-
-                    var textOffset = 38;
-                    var hostTextDelta = 15;
-
-                    // node host:port or local
-                    gHostLabel.append('svg:text')
-                        .attr('x', 0)
-                        .attr('y', function (d) {
-                            return textOffset + hostTextDelta;
-                        })
-                        .attr('class', 'id id-host')
-                        .text(function (d) {
-                            if (d.local) {
-                                return 'local';
-                            } else {
-                                parser.href = d.location;
-                                var hostname = parser.hostname;
-                                if (!containsIPV4(parser.hostname)) {
-                                    hostname = parser.hostname.split('.')[0];
-                                }
-                                return hostname + ":" + parser.port;
+                        .attr('r', radius + 10)
+                        .style('stroke', function (d) {
+                            switch (d.nodeState) {
+                                case 'LEADER':
+                                case 'CANDIDATE':
+                                    return '#0A0A0A';
+                                default:
+                                    return 'none';
                             }
                         })
-                        //.style('opacity', 0.7)
-                        .each(function (d) {
-                            d.labelHost = this;
+                        .style('fill', nodeColors)
+                        .attr("stroke-width", 3)
+                        .attr('stroke-dasharray', function (d) {
+                            if (d.nodeState === 'CANDIDATE') {
+                                return '5, 5';
+                            }
+                            return '';
                         });
 
+                    // Create a dummy anchor node
+                    let parser = document.createElement('a');
 
-                    var gNodeLabel = g.append('svg:g');
+                    // 3) Actual repo icon.
+                    g.append('svg:text')
+                        .attr('y', 20)
+                        .attr('text-anchor', 'middle')
+                        .attr('class', 'icon-any repo')
+                        .attr('fill', '#cbeeea')
+                        .text(nodeText);
 
-                    var gNodeLabelRect = gNodeLabel.append('svg:rect');
 
-                    // show node names
-                    gNodeLabel.append('svg:text')
+                    let addressTextOffset = 50;
+                    let nextTextDelta = 15;
+
+                    let gNodeAddressLabel = g.append('svg:g');
+
+                    let gNodeAddressLabelRect = gNodeAddressLabel.append('svg:rect');
+
+                    // show node address
+                    gNodeAddressLabel.append('svg:text')
                         .attr('x', 0)
-                        .attr('y', textOffset)
+                        .attr('y', function () {
+                            return addressTextOffset;
+                        })
                         .attr('class', 'id')
                         .text(function (d) {
-                            return d.name;
+                            parser.href = d.location;
+                            let hostname = parser.hostname;
+                            if (!containsIPV4(parser.hostname)) {
+                                hostname = parser.hostname.split('.')[0];
+                            }
+                            return hostname + ":" + parser.port;
                         })
                         .each(function (d) {
-                            d.labelNode = this;
+                            d.labelNodeAddress = this;
+                        });
+
+                    let gMatchIndexLabel = g.append('svg:g');
+
+                    let gMatchIndexLabelRect = gMatchIndexLabel.append('svg:rect');
+
+                    // show node matchIndex
+                    gMatchIndexLabel.append('svg:text')
+                        .attr('x', 0)
+                        .attr('y', function () {
+                            return addressTextOffset + nextTextDelta;
+                        })
+                        .attr('class', 'id id-secondary')
+                        .text(function (d) {
+                            return d.matchIndex;
+                        })
+                        .each(function (d) {
+                            d.labelMatchIndex = this;
+                        });
+
+                    let gTermLabel = g.append('svg:g');
+
+                    let gTermLabelRect = gTermLabel.append('svg:rect');
+
+                    // show node term
+                    gTermLabel.append('svg:text')
+                        .attr('x', 0)
+                        .attr('y', function () {
+                            return addressTextOffset + 2 * nextTextDelta;
+                        })
+                        .attr('class', 'id id-secondary')
+                        .text(function (d) {
+                            return d.term;
+                        })
+                        .each(function (d) {
+                            d.termLabel = this;
+                        });
+
+                    let gStatusLabel = g.append('svg:g');
+
+                    let gStatusLabelRect = gTermLabel.append('svg:rect');
+
+                    // show node sync status
+                    gStatusLabel.append('svg:text')
+                        .attr('x', 0)
+                        .attr('y', function (d) {
+                            if (typeof d.matchIndex === "undefined" && typeof d.term === "undefined") {
+                                return addressTextOffset + nextTextDelta;
+                            } else {
+                                return addressTextOffset + 3 * nextTextDelta;
+                            }
+                        })
+                        .attr('class', 'id id-secondary')
+                        .text(function (d) {
+                            return d.syncStatus;
+                        })
+                        .each(function (d) {
+                            d.statusLabel = this;
                         });
 
 
@@ -630,7 +551,7 @@ clusterManagementDirectives.directive('clusterGraphicalView', ['$window', '$time
                     $timeout(function () {
                         function getBBox(node) {
                             // Due to an ancient yet unfixed bug in Firefox (https://bugzilla.mozilla.org/show_bug.cgi?id=612118)
-                            // getBBox() throws an error _sometimes_ (if the labelHost and labelNode aren't rendered yet)
+                            // getBBox() throws an error _sometimes_ (if the labelMatchIndex and labelNodeAddress aren't rendered yet)
                             // and hell breaks loose. We overcome that by catching the error and providing a bbox with zeros
                             // (this is what good browsers do!)
                             try {
@@ -640,24 +561,44 @@ clusterManagementDirectives.directive('clusterGraphicalView', ['$window', '$time
                             }
                         }
 
-                        gHostLabelRect.attr('width', function (d) {
-                            return getBBox(d.labelHost)['width'] + 4;
+                        gNodeAddressLabelRect.attr('width', function (d) {
+                            return getBBox(d.labelNodeAddress)['width'] + 4;
                         }).attr('height', function (d) {
-                            return getBBox(d.labelHost)['height'];
+                            return getBBox(d.labelNodeAddress)['height'];
                         }).attr('x', function (d) {
-                            return getBBox(d.labelHost)['x'] - 2;
+                            return getBBox(d.labelNodeAddress)['x'] - 2;
                         }).attr('y', function (d) {
-                            return getBBox(d.labelHost)['y'];
+                            return getBBox(d.labelNodeAddress)['y'];
                         }).attr('fill', '#EEEEEE');
 
-                        gNodeLabelRect.attr('width', function (d) {
-                            return getBBox(d.labelNode)['width'] + 4;
+                        gMatchIndexLabelRect.attr('width', function (d) {
+                            return getBBox(d.labelMatchIndex)['width'] + 4;
                         }).attr('height', function (d) {
-                            return getBBox(d.labelNode)['height'];
+                            return getBBox(d.labelMatchIndex)['height'];
                         }).attr('x', function (d) {
-                            return getBBox(d.labelNode)['x'] - 2;
+                            return getBBox(d.labelMatchIndex)['x'] - 2;
                         }).attr('y', function (d) {
-                            return getBBox(d.labelNode)['y'];
+                            return getBBox(d.labelMatchIndex)['y'];
+                        }).attr('fill', '#EEEEEE');
+
+                        gTermLabelRect.attr('width', function (d) {
+                            return getBBox(d.termLabel)['width'] + 4;
+                        }).attr('height', function (d) {
+                            return getBBox(d.termLabel)['height'];
+                        }).attr('x', function (d) {
+                            return getBBox(d.termLabel)['x'] - 2;
+                        }).attr('y', function (d) {
+                            return getBBox(d.termLabel)['y'];
+                        }).attr('fill', '#EEEEEE');
+
+                        gStatusLabelRect.attr('width', function (d) {
+                            return getBBox(d.statusLabel)['width'] + 4;
+                        }).attr('height', function (d) {
+                            return getBBox(d.statusLabel)['height'];
+                        }).attr('x', function (d) {
+                            return getBBox(d.statusLabel)['x'] - 2;
+                        }).attr('y', function (d) {
+                            return getBBox(d.statusLabel)['y'];
                         }).attr('fill', '#EEEEEE');
                     }, 100);
 
@@ -666,43 +607,16 @@ clusterManagementDirectives.directive('clusterGraphicalView', ['$window', '$time
                     scope.updating = false;
                 }
 
-                scope.updateStatuses = updateStatuses;
                 scope.restart = restart;
 
-                function updateWarnings() {
-                    path.select('g')
-                        .classed('link-warning-visible', function (d) {
-                            return d.reversePeerMissing && !('disabledReason' in d.target);
-                        });
-                }
-
-                scope.updateWarnings = updateWarnings;
-
                 function updateColors() {
-                    currentCluster++;
-                    if (currentCluster >= scope.clusters.length) {
-                        currentCluster = 0;
-                    }
-
-                    // try to find the next cluster with workers
-                    var start = currentCluster;
-                    while (!scope.clusters[currentCluster].hasWorkers) {
-                        currentCluster++;
-                        if (currentCluster >= scope.clusters.length) {
-                            currentCluster = 0;
-                        }
-                        if (currentCluster === start) {
-                            // didn't find any clusters with workers, no need to update colors
-                            return;
-                        }
-                    }
                     circle.selectAll('.repo').style('fill', nodeColors);
                 }
 
                 scope.updateColors = updateColors;
 
                 function refreshMastersIcons() {
-                    d3.selectAll('.repo').text(iconText);
+                    d3.selectAll('.repo').text(nodeText);
                 }
 
                 scope.refreshMastersIcons = refreshMastersIcons;
@@ -718,7 +632,7 @@ clusterManagementDirectives.directive('clusterGraphicalView', ['$window', '$time
                 };
 
                 restart();
-            };*/
+            };
         }
     };
 }]);
