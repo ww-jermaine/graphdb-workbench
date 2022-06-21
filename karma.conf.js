@@ -2,7 +2,8 @@ const DEV_CONFIG = require('./webpack.config.dev');
 const merge = require('webpack-merge');
 const path = require('path');
 
-process.env.CHROME_BIN = require('puppeteer').executablePath();
+process.env.CHROME_BIN = "/Users/desislava/.nvm/versions/node/v14.17.3/lib/node_modules/puppeteer/.local-chromium/mac-1002410/chrome-mac/Chromium.app/Contents/MacOS/Chromium";
+console.log("!!!!" + process.env.CHROME_BIN)
 const os = require('os');
 const chromeHeadlessSupported = os.platform() !== 'win32' || Number((os.release().match(/^(\d+)/) || ['0', '0'])[1]) >= 10;
 
