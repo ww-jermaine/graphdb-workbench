@@ -19,8 +19,9 @@ export const mapAclRulesResponse = (response) => {
                 rule.predicate,
                 rule.object,
                 rule.context,
-                rule.role,
-                rule.policy
+                rule.role.replace('CUSTOM_', ''),
+                rule.policy,
+                rule.operation
             );
         });
     }

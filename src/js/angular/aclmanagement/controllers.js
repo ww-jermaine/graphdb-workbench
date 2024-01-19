@@ -117,6 +117,15 @@ function AclManagementCtrl($scope, $location, toastr, AclManagementRestService, 
         $scope.editedRuleIndex = index;
         $scope.isNewRule = false;
         $scope.editedRuleCopy = $scope.rulesModel.getRuleCopy(index);
+
+        // Makes the edit rule row the same height as the just about to be hidden edited row to avoid jumpiness
+        const height = $($('.acl-rules > tbody > tr')[index]).height();
+        setTimeout(() => {
+            const sel = $($('.acl-rules > tbody > tr')[index]);
+            sel.height(height);
+            $('td', sel).css('paddingTop', "0").css('paddingBottom', "0");
+        }, 0);
+
         setModelDirty();
     };
 
@@ -127,7 +136,7 @@ function AclManagementCtrl($scope, $location, toastr, AclManagementRestService, 
     $scope.deleteRule = (index) => {
         ModalService.openConfirmation(
             $translate.instant('common.confirm'),
-            $translate.instant('acl_management.rulestable.messages.delete_rule_confirmation', {index}),
+            $translate.instant('acl_management.rulestable.messages.delete_rule_confirmation', {index: index + 1}),
             () => {
                 $scope.rulesModel.removeRule(index);
                 setModelDirty();

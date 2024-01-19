@@ -20,8 +20,8 @@ export class ACListModel {
      * @param {string} role
      * @param {string} policy
      */
-    appendNewRule(subject, predicate, object, context, role, policy) {
-        this.aclRules.push(new ACRuleModel(subject, predicate, object, context, role, policy));
+    appendNewRule(subject, predicate, object, context, role, policy, operation) {
+        this.aclRules.push(new ACRuleModel(subject, predicate, object, context, role, policy, operation));
     }
 
     /**
@@ -112,14 +112,16 @@ export class ACRuleModel {
      * @param {string} context
      * @param {string} role
      * @param {string} policy
+     * @param {string} operation
      */
-    constructor(subject = '*', predicate = '*', object = '*', context = '*', role = 'CUSTOM_', policy = ACL_POLICY.ALLOW) {
+    constructor(subject = '*', predicate = '*', object = '*', context = '*', role = '', policy = ACL_POLICY.ALLOW, operation = '*') {
         this._subject = subject;
         this._predicate = predicate;
         this._object = object;
         this._context = context;
         this._role = role;
         this._policy = policy;
+        this._operation = operation;
     }
 
     get subject() {
@@ -168,6 +170,14 @@ export class ACRuleModel {
 
     set policy(value) {
         this._policy = value;
+    }
+
+    get operation() {
+        return this._operation;
+    }
+
+    set operation(value) {
+        this._operation = value;
     }
 }
 
